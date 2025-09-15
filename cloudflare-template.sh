@@ -15,32 +15,21 @@ discorduri=""                                       # URI for Discord WebHook "h
 
 
 ###########################################
-## Check if we have a public IP
+## Regex for valid IPv4 address
 ###########################################
 REGEX_IPV4="^(0*(1?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))\.){3}0*(1?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))$"
-IP_SERVICES=(
-  "https://api.ipify.org"
-  "https://ipv4.icanhazip.com"
-  "https://ipinfo.io/ip"
-)
 
-# Try all the ip services for a valid IPv4 address
-for service in ${IP_SERVICES[@]}; do
-  RAW_IP=$(curl -s $service)
-  if [[ $RAW_IP =~ $REGEX_IPV4 ]]; then
-    CURRENT_IP=$BASH_REMATCH
-    logger -s "DDNS Updater: Fetched IP $CURRENT_IP"
-    break
-  else
-    logger -s "DDNS Updater: IP service $service failed."
-  fi
-done
+###########################################
+## Get private IP from interface eth0
+###########################################
+CURRENT_IP=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 
-# Exit if IP fetching failed
-if [[ -z "$CURRENT_IP" ]]; then
-  logger -s "DDNS Updater: Failed to find a valid IP."
+if [[ ! $CURRENT_IP =~ $REGEX_IPV4 ]]; then
+  logger -s "DDNS Updater: Failed to find a valid private IP on eth0."
   exit 2
 fi
+
+logger -s "DDNS Updater: Fetched private IP $CURRENT_IP"
 
 ###########################################
 ## Check and set the proper auth header
